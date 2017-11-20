@@ -111,7 +111,7 @@ public class Main {
 
     private static void showHelp(final Options options) {
         HelpFormatter formatter = new HelpFormatter();
-        formatter.printHelp( "SimpleMapReduce.jar -file1 <file1> -file2 <file2> [output]", options );
+        formatter.printHelp( "SimpleMapReduce.jar -files <file1,file2,...> [-output (stdout|csv)]", options );
     }
 
     private static CommandLine parseArguments(final String arguments[], final Options options) throws ParseException {
