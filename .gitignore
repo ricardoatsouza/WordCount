@@ -1,4 +1,7 @@
 
+# General
+output.csv
+
 # IDE
 .idea
 *.iml
