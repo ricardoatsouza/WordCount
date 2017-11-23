@@ -5,10 +5,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import wordcount.FileThread;
 import wordcount.SharedCache;
+import wordcount.model.WordOutput;
 
 import java.io.*;
 import java.util.Arrays;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -34,7 +36,7 @@ public class Main {
             LOGGER.info(String.format("Output will be: \"%s\"", outputType));
 
             final SharedCache sharedCache = new SharedCache();
-            final Stream<FileThread> fileThreadStream = Arrays.stream(filenames).map(f -> new FileThread("thread_", f, sharedCache));
+            final Stream<FileThread> fileThreadStream = Arrays.stream(filenames).map(f -> new FileThread("thread_" + f, f, sharedCache));
 
             final ExecutorService executorService = Executors.newCachedThreadPool();
             fileThreadStream.forEach(executorService::execute);
@@ -42,7 +44,10 @@ public class Main {
 
             executorService.awaitTermination(1, TimeUnit.DAYS); // Just some quite long time
 
-            outputResults(outputType, sharedCache.reduceByWord());
+            final Map<WordOutput, Long> reducedByWord = sharedCache.reduceByWord();
+            final Map<WordOutput, Long> reducedByWordAndFilename = sharedCache.reduceByWordAndFilename();
+
+            outputResults(outputType, filenames, reducedByWord, reducedByWordAndFilename);
 
             LOGGER.info("Done.");
         }
@@ -58,28 +63,43 @@ public class Main {
         }
     }
 
-    private static void outputResults(final String outputType, final Map<String, Long> mapCount) throws IOException {
+    private static String trasformOutput(final String filenames[], final Map<WordOutput, Long> mapCountReducedByWord, final Map<WordOutput, Long> mapCountReducedByWordAndFilename, final char sep) {
+        final StringBuilder stringBuilder = new StringBuilder();
+        final Set<WordOutput> wordSet = mapCountReducedByWord.keySet();
+
+        stringBuilder.append(String.format("Word%cTotal%c", sep, sep));
+        for (final String f : filenames) {
+            stringBuilder.append(String.format("%s%c", f, sep));
+        }
+        stringBuilder.append("\n");
+
+        for (final WordOutput wordOutput : wordSet) {
+            stringBuilder.append(String.format("%s%c%d%c", wordOutput.word, sep, mapCountReducedByWord.get(wordOutput), sep));
+
+            for (final String f : filenames) {
+                stringBuilder.append(String.format("%d%c", mapCountReducedByWordAndFilename.getOrDefault(new WordOutput(wordOutput.word, f), 0L), sep));
+            }
+            stringBuilder.deleteCharAt(stringBuilder.lastIndexOf(String.valueOf(sep)));
+            stringBuilder.append("\n");
+        }
+
+        return stringBuilder.toString();
+    }
+
+    private static void outputResults(final String outputType, final String filenames[], final Map<WordOutput, Long> mapCountReducedByWord, final Map<WordOutput, Long> mapCountReducedByWordAndFilename) throws IOException {
         switch (outputType) {
-            case "csv": outputToCsv(mapCount); break;
-            default: outputToStdout(mapCount);
+            case "csv": outputToCsv(trasformOutput(filenames, mapCountReducedByWord, mapCountReducedByWordAndFilename, ',')); break;
+            default: outputToStdout(trasformOutput(filenames, mapCountReducedByWord, mapCountReducedByWordAndFilename, '\t'));
         }
     }
 
-    private static void outputToStdout(final Map<String, Long> mapCount) {
-        for (final String word : mapCount.keySet()) {
-            final long wordCount = mapCount.get(word);
-            System.out.println(String.format("%s\t%d", word, wordCount));
-        }
+    private static void outputToStdout(final String output) {
+        System.out.print(output);
     }
 
-    private static void outputToCsv(final Map<String, Long> mapCount) throws IOException {
+    private static void outputToCsv(final String output) throws IOException {
         final Writer bufferedWriter = new BufferedWriter(new OutputStreamWriter(new FileOutputStream("output.csv"), "UTF-8"));
-
-        bufferedWriter.write("Word,Count\n");
-        for (final String word : mapCount.keySet()) {
-            final long wordCount = mapCount.get(word);
-            bufferedWriter.write(String.format("%s,%d\n", word, wordCount));
-        }
+        bufferedWriter.write(output);
         bufferedWriter.close();
     }
 

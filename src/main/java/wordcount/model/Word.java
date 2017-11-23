@@ -7,9 +7,18 @@ public class Word implements Comparable<Word> {
     public String wordString;
     public Source source;
 
-    public Word(final String wordString, final Source source) {
+    public Word(final String wordString) {
         this.uuid = UUID.randomUUID().toString();
         this.wordString = wordString;
+    }
+
+    public Word(final String wordString, final String filename) {
+        this(wordString);
+        this.source = new Source(filename);
+    }
+
+    public Word(final String wordString, final Source source) {
+        this(wordString);
         this.source = source;
     }
 

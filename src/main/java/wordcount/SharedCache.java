@@ -1,22 +1,30 @@
 package wordcount;
 
 import wordcount.model.Word;
+import wordcount.model.WordOutput;
 
-import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 public class SharedCache {
 
-    private final Map<Word, Integer> map = new HashMap<>();
+    private final Set<Word> wordSet = new HashSet<>();
 
     public void addToMap(final Word word) {
-        map.put(word, 1);
+        wordSet.add(word);
     }
 
-    public Map<String, Long> reduceByWord() {
-        return map.entrySet().stream().map(Map.Entry::getKey).collect(
-            Collectors.groupingBy(word -> word.wordString, Collectors.counting())
+    public Map<WordOutput, Long> reduceByWord() {
+        return wordSet.stream().collect(
+                Collectors.groupingBy(word -> new WordOutput(word.wordString), Collectors.counting())
+        );
+    }
+
+    public Map<WordOutput, Long> reduceByWordAndFilename() {
+        return wordSet.stream().collect(
+                Collectors.groupingBy(word -> new WordOutput(word.wordString, word.source.filename), Collectors.counting())
         );
     }
 
